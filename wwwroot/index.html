@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Remote Dimension Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+    <title>WaZWeather</title>
     <base href="/" />
     
     <!-- Apple PWA Standalone Mode Tags -->
@@ -11,137 +11,219 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="icon-192.png" />
     
-    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/index.css" />
     <link rel="icon" type="image/png" href="icon-192.png" />
-    <link href="PourAndMeasure.styles.css" rel="stylesheet" />
     <link href="manifest.webmanifest" rel="manifest" />
-    
-    <!-- Leaflet.js Mapping Library (Geofencing) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
-    <!-- JS Interops -->
-    <script src="js/iosPwaInterop.js"></script>
-    
-    <script type="importmap"></script>
 </head>
 <body>
-    <div id="app">
-        <div class="shotstack-loader">
-            <div class="spinner"></div>
-            <span class="loading-text">Mounting Pour & Measure...</span>
-            <div class="progress-bar-container">
-                <div class="progress-bar-fill" style="width: var(--blazor-load-percentage, 0%)"></div>
-            </div>
-            <style>
-                .progress-text::after {
-                    content: var(--blazor-load-percentage-text, "0") "%";
-                }
-            </style>
-            <span class="progress-text">Loading... </span>
+    <!-- Offline Banner -->
+    <div id="offline-banner" style="display:none; position:fixed; top:env(safe-area-inset-top, 0px); left:0; right:0; background:#f59e0b; color:#000; text-align:center; padding:10px; font-weight:900; z-index:10005; text-transform:uppercase; font-family:ui-monospace,monospace; letter-spacing:1px; box-shadow:0 4px 12px rgba(245,158,11,0.5);">
+        OFFLINE: DATA OUTDATED
+    </div>
+
+    <!-- WaZWeather v5 — Rain Intel + Split Radar + 7-Day Forecast -->
+    <section id="wazeecha-telemetry" class="telemetry-section content-section" style="position:fixed;inset:0;z-index:9999;background:#050a06;margin:0;padding:0;display:flex;flex-direction:row;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;">
+
+        <!-- 5 Progress Dots -->
+        <div id="waz-dots">
+          <div class="waz-dot active"></div>
+          <div class="waz-dot"></div>
+          <div class="waz-dot"></div>
+          <div class="waz-dot"></div>
+          <div class="waz-dot"></div>
         </div>
-    </div>
 
-    <div id="blazor-error-ui">
-        An unhandled exception occurred.
-        <a href="" class="reload">Reload</a>
-        <a class="dismiss">✕</a>
-    </div>
+        <!-- Floating top bar -->
+        <div id="waz-top-bar">
+          <div id="waz-clock-wrap">
+            <div id="waz-live-badge"><div class="waz-live-dot"></div><span class="waz-live-label">Live</span></div>
+            <div id="waz-clock">--:--:--</div>
+          </div>
+        </div>
 
-    <!-- iOS Add to Home Screen Guidance -->
-    <div id="ios-pwa-prompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 16px; border-radius: 12px; z-index: 9999; text-align: center; width: 90%; max-width: 400px; font-family: sans-serif;">
-        <p style="margin: 0 0 10px 0; font-size: 14px;">Install this app on your iPhone: tap the <strong>Share</strong> icon below and select <strong>Add to Home Screen</strong>.</p>
-        <button onclick="document.getElementById('ios-pwa-prompt').style.display='none'" style="background: #007aff; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold;">Got it</button>
-    </div>
-    <script>
-        // Show prompt only on iOS Safari if not in standalone mode
-        const isIos = () => {
-            const userAgent = window.navigator.userAgent.toLowerCase();
-            return /iphone|ipad|ipod/.test(userAgent);
-        };
-        const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
-        if (isIos() && !isInStandaloneMode()) {
-            document.getElementById('ios-pwa-prompt').style.display = 'block';
-        }
-    </script>
+        <!-- ════ CARD 1: RAIN INTEL ════ -->
+        <div id="waz-rain-intel" class="waz-card waz-scroll">
+          <div class="ri-body">
+            <div class="ri-source">
+              <div><div class="ri-source-lbl">☔ Rain Intel · Wazeecha</div></div>
+              <div id="waz-updated">—</div>
+            </div>
 
-    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
-    <script>
-        // Request persistent storage defensively for iOS 7-day eviction
-        if (navigator.storage && navigator.storage.persist) {
-            navigator.storage.persist().then(granted => {
-                if (granted) console.log("Storage will not be cleared except by explicit user action");
-                else console.log("Storage may be cleared by the UA under storage pressure.");
-            });
-        }
+            <!-- STORM TARGET COUNTDOWN Alert Bar -->
+            <div id="waz-storm-alert-bar" style="display:none; margin-bottom: 12px;"></div>
 
-        navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' }).then(registration => {
-            registration.onupdatefound = () => {
-                const installingWorker = registration.installing;
-                if (installingWorker == null) {
-                    return;
-                }
-                installingWorker.onstatechange = () => {
-                    if (installingWorker.state === 'installed') {
-                        if (navigator.serviceWorker.controller) {
-                            // A new service worker has been installed and is ready to take over.
-                            console.log('New or updated content is available. Please refresh the page to update.');
-                        }
-                    }
-                };
-            };
-        });
-    </script>
-    <script src="js/editorInteractions.js"></script>
-    <script src="js/zla-interop.js"></script>
+            <!-- Live countdown hero -->
+            <div class="ri-countdown-hero">
+              <div class="ri-countdown-label">🌧 Rain Arrival</div>
+              <div id="waz-countdown-main">Checking…</div>
+              <div id="waz-countdown-sub">Loading forecast data</div>
+            </div>
+
+            <!-- ZLA Rain-Wall Intercept HUD -->
+            <div id="rain-countdown-hud" class="ri-countdown-hero" style="display:none; margin-top: 10px; background: rgba(255, 255, 255, 0.05); border: 1px dashed rgba(255, 255, 255, 0.15); padding: 12px; border-radius: 16px; box-shadow: none;">
+              <div class="ri-countdown-label" style="opacity: 0.85;">🎯 Radar Rain Intercept</div>
+              <div id="zla-radar-hud-main" style="font-family:ui-monospace,monospace; font-size:1.15rem; font-weight:700; color:#39FF14;">Scanning...</div>
+              <div id="zla-radar-hud-sub" style="font-size:0.7rem; color:#9ca3af; margin-top:2px;">ZLA Minute-by-Minute Kinematic Tracking</div>
+            </div>
+
+            <!-- POUR VERDICT MATRIX BLOCK -->
+            <div id="pour-verdict-block" style="margin-top: 14px; background: #000; border: 2px solid #333; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+              <div style="font-size: 0.7rem; color: #9ca3af; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">POUR VERDICT MATRIX</div>
+              <div id="pour-verdict-main" style="font-size: 3.5rem; font-weight: 900; line-height: 1; letter-spacing: -2px; color: #9ca3af; text-transform: uppercase;">--</div>
+              <div id="pour-verdict-sub" style="font-size: 0.85rem; color: #d1d5db; margin-top: 8px; font-weight: 600; text-align: center;">Calculating...</div>
+              <div style="display: flex; gap: 15px; margin-top: 15px; width: 100%; justify-content: space-around; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+                <div style="text-align: center;"><div style="font-size: 0.6rem; color: #9ca3af; text-transform: uppercase;">Temp</div><div id="pour-val-temp" style="font-weight: 800; color: #fff;">--</div></div>
+                <div style="text-align: center;"><div style="font-size: 0.6rem; color: #9ca3af; text-transform: uppercase;">Wind</div><div id="pour-val-wind" style="font-weight: 800; color: #fff;">--</div></div>
+                <div style="text-align: center;"><div style="font-size: 0.6rem; color: #9ca3af; text-transform: uppercase;">Rain</div><div id="pour-val-rain" style="font-weight: 800; color: #fff;">--</div></div>
+              </div>
+            </div>
+
+            <!-- Today / Tomorrow strip -->
+            <div class="ri-today-strip" style="margin-top: 14px;">
+              <div class="ri-today-cell">
+                <div class="ri-today-lbl">Today Rain</div>
+                <div id="waz-today-total">--"</div>
+              </div>
+              <div class="ri-today-cell">
+                <div class="ri-today-lbl">Max Chance</div>
+                <div id="waz-today-max-pct">--%</div>
+              </div>
+              <div class="ri-today-cell">
+                <div class="ri-today-lbl">Tomorrow</div>
+                <div id="waz-tomorrow-rain">--%</div>
+              </div>
+            </div>
+
+            <!-- 12-hr bar chart -->
+            <div class="ri-bars-block" style="margin-top: 14px;">
+              <div class="ri-bars-hdr">
+                <span class="ri-bars-title">Next 12 Hours</span>
+                <span id="waz-rain-summary">Loading…</span>
+              </div>
+              <div class="ri-bars" id="waz-rain-bars"></div>
+              <div id="waz-rain-next">Checking…</div>
+            </div>
+
+            <!-- Compact stat strip -->
+            <div class="ri-stat-strip" style="margin-top: 14px;">
+              <div class="ri-stat"><div class="ri-stat-lbl" id="waz-lbl-feels">Feels Like</div><div class="ri-stat-val" id="waz-feels">--°</div></div>
+              <div class="ri-stat"><div class="ri-stat-lbl">Wind</div><div class="ri-stat-val" id="waz-wind">-- mph</div><div class="ri-stat-sub" id="waz-wind-dir">--</div></div>
+              <div class="ri-stat"><div class="ri-stat-lbl" id="waz-lbl-uv">UV Max</div><div class="ri-stat-val" id="waz-uv" style="color:#fbbf24;">--</div></div>
+            </div>
+
+            <!-- Sun strip -->
+            <div class="ri-sun-row" style="margin-top: 14px;">
+              <div class="ri-sun-item"><span style="font-size:1rem;">🌅</span><div><div class="ri-sun-lbl">Sunrise</div><div class="ri-sun-val" id="waz-sunrise">--:--</div></div></div>
+              <div class="ri-sun-sep"></div>
+              <div class="ri-sun-item"><div style="text-align:right;"><div class="ri-sun-lbl">Sunset</div><div class="ri-sun-val" id="waz-sunset">--:--</div></div><span style="font-size:1rem;">🌇</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════ CARD 2: RADAR (Split 68vh / rest) ════ -->
+        <div id="waz-radar" class="waz-card">
+          <div id="waz-radar-frame-wrap">
+            <iframe id="windy-iframe"
+              src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=°F&metricWind=mph&zoom=9&overlay=radar&product=radar&level=surface&lat=44.3936&lon=-89.8173&play=true&message=true&marker=true&detailLat=44.3936&detailLon=-89.8173"
+              allowfullscreen loading="lazy"></iframe>
+          </div>
+          <div id="waz-radar-strip">
+            <div class="radar-strip-top">
+              <span class="radar-strip-lbl">Layer</span>
+              <span id="waz-radar-time">Live Radar Active</span>
+            </div>
+            <div class="radar-layer-btns">
+              <button class="rlb active" id="rlb-radar" onclick="wazLayer('radar','radar')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Radar
+              </button>
+              <button class="rlb" id="rlb-rain" onclick="wazLayer('rain','')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/><polyline points="8 19 12 23 16 19"/></svg> Rain
+              </button>
+              <button class="rlb" id="rlb-wind" onclick="wazLayer('wind','')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg> Wind
+              </button>
+              <button class="rlb" id="rlb-temp" onclick="wazLayer('temp','')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg> Temp
+              </button>
+              <button class="rlb" id="rlb-clouds" onclick="wazLayer('clouds','')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg> Clouds
+              </button>
+              <button class="rlb" id="rlb-cape" onclick="wazLayer('cape','')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Storms
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════ CARD 3: RIVER ════ -->
+        <div id="waz-river" class="waz-card waz-scroll">
+          <div class="river-body">
+            <div class="river-hdr">
+              <div class="river-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              </div>
+              <div><div class="river-title">Hydrology</div><div class="river-gauge">Wisconsin River · USGS 05395000</div></div>
+            </div>
+            <div class="river-main">
+              <div class="river-cfs-lbl">Current Flow Rate</div>
+              <div style="display:flex;align-items:baseline;gap:5px;">
+                <div id="waz-cfs" class="river-cfs-val">-- CFS</div>
+                <div id="waz-trend"></div>
+              </div>
+              <div class="river-sub-grid">
+                <div class="river-sub-cell"><div class="river-sub-lbl">River Depth</div><div id="waz-gauge" class="river-sub-val" style="color:#a78bfa;">-- ft</div></div>
+                <div class="river-sub-cell"><div class="river-sub-lbl">Velocity Est.</div><div id="waz-vel" class="river-sub-val" style="color:#34d399;">-- ft/s</div></div>
+              </div>
+              <div class="flood-bar-wrap" id="waz-flood-wrap" style="display:none;">
+                <div class="flood-bar-labels"><span>Stage</span><span id="waz-flood-label">--</span></div>
+                <div class="flood-bar-track"><div id="waz-flood-fill"></div></div>
+              </div>
+            </div>
+            <div class="river-chart-wrap" style="margin-top:14px;"><canvas id="waz-hydro-chart" style="width:100%;height:100%;"></canvas></div>
+          </div>
+        </div>
+
+        <!-- ════ CARD 4: ALERTS ════ -->
+        <div id="waz-alerts" class="waz-card waz-scroll">
+          <div class="alerts-body">
+            <div class="alerts-hdr">
+              <div class="alerts-icon">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <div><div class="alerts-title">NWS Alerts</div><div class="alerts-zone">Wood County, WI · WIZ030</div></div>
+            </div>
+            <div id="waz-alerts-list">
+              <div class="no-alerts"><div class="no-alerts-icon">✅</div><div class="no-alerts-title">All Clear</div><div class="no-alerts-sub">No active alerts for Wood County</div></div>
+            </div>
+            <div class="alerts-footer"><div class="alerts-src">Source: NWS Green Bay</div><div id="waz-alerts-stamp"></div></div>
+          </div>
+        </div>
+
+        <!-- ════ CARD 5: FORECAST ════ -->
+        <div id="waz-forecast" class="waz-card waz-scroll">
+          <div class="fc-body">
+            <div class="fc-hdr">
+              <div><div class="fc-title">7-Day Forecast</div><div class="fc-sub">Wazeecha · Wood County</div></div>
+              <div class="aqi-badge">
+                <div class="aqi-badge-lbl">AQI</div>
+                <div id="waz-aqi-val">--</div>
+                <div id="waz-aqi-status">--</div>
+              </div>
+            </div>
+            <div class="fc-precip-today">
+              <div><div class="fc-precip-lbl">Today's Rain</div><div id="waz-precip-today">--"</div></div>
+              <div style="text-align:right;"><div class="fc-precip-lbl">7-Day Total</div><div id="waz-precip-week">--"</div></div>
+            </div>
+
+            <div class="fc-days" id="waz-fc-days">
+              <!-- populated by JS -->
+            </div>
+          </div>
+        </div>
+    </section>
     
-    <script>
-        // High-speed blob transmission stream bypass framework
-        window.shotStackSaver = {
-            saveAndDownloadFile: function (filename, byteBase64) {
-                try {
-                    // Convert base64 to byte array
-                    const byteCharacters = atob(byteBase64);
-                    const byteNumbers = new Array(byteCharacters.length);
-                    for (let i = 0; i < byteCharacters.length; i++) {
-                        byteNumbers[i] = byteCharacters.charCodeAt(i);
-                    }
-                    const byteArray = new Uint8Array(byteNumbers);
-                    
-                    // Create File object for sharing
-                    const file = new File([byteArray], filename, { type: 'application/pdf' });
-                    
-                    // Use Web Share API if supported (critical for mobile PWA standalone mode)
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        navigator.share({
-                            files: [file],
-                            title: 'ShotStack Studio PDF',
-                            text: 'Your compiled PDF document is ready.'
-                        }).catch(err => {
-                            console.log('User canceled or share failed, falling back to download:', err);
-                            window.shotStackSaver.triggerFallbackDownload(filename, byteArray);
-                        });
-                    } else {
-                        window.shotStackSaver.triggerFallbackDownload(filename, byteArray);
-                    }
-                } catch (error) {
-                    console.error('File saving failed:', error);
-                }
-            },
-            triggerFallbackDownload: function (filename, byteArray) {
-                const blob = new Blob([byteArray], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-                
-                const link = document.createElement('a');
-                link.download = filename;
-                link.href = url;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                setTimeout(() => URL.revokeObjectURL(url), 2000);
-            }
-        };
-    </script>
+    <!-- External Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/script.js" type="module"></script>
 </body>
 </html>

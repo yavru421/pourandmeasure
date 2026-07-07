@@ -1,41 +1,22 @@
 {
-  "name": "Pour & Measure",
-  "short_name": "PourMeasure",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "name": "WaZWeather ZLA",
+  "short_name": "WaZWeather",
+  "description": "WaZWeather ZLA Kinematics Telemetry HUD",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#090a0f",
-  "theme_color": "#090a0f",
-  "prefer_related_applications": false,
+  "background_color": "#050a06",
+  "theme_color": "#050a06",
   "icons": [
-    {
-      "src": "icon-512.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "maskable any"
-    },
     {
       "src": "icon-192.png",
       "type": "image/png",
       "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
-  ],
-  "description": "Real-time visual alignment guide for on-site mixing of concrete additives, epoxies, and sealants.",
-  "share_target": {
-    "action": "/share-target",
-    "method": "POST",
-    "enctype": "multipart/form-data",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url",
-      "files": [
-        {
-          "name": "images",
-          "accept": ["image/jpeg", "image/png", "image/webp"]
-        }
-      ]
-    }
-  }
+  ]
 }

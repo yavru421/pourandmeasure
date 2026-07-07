@@ -1,0 +1,30 @@
+# .agentsignore
+# Define which global Antigravity capabilities should be excluded from this workspace.
+
+# --------------------------------------------------------
+# 1. Block Specific Skills
+# --------------------------------------------------------
+# Prevent the agent from using destructive or irrelevant skills
+skills/app-purger
+skills/tactical-storm-dispatch
+
+# --------------------------------------------------------
+# 2. Block Entire Plugins
+# --------------------------------------------------------
+# Disable specific plugins for this project context
+plugins/agency-billing-plugin
+
+# --------------------------------------------------------
+# 3. Pattern Matching & Negation
+# --------------------------------------------------------
+# Ignore all globally defined subagents...
+agents/*
+
+# ...but explicitly allow the 'research' subagent
+!agents/research
+
+# --------------------------------------------------------
+# 4. Rule Scoping
+# --------------------------------------------------------
+# Ignore specific global rules by their tag ID
+rules/AGENTS.md:Cloudflare_Deployment_Workflow
